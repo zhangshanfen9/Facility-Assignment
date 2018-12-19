@@ -98,7 +98,7 @@ def get_neighbor(assign, method):
 if __name__ == '__main__':
     facility_num, customer_num, \
     facility_capacity, facility_cost, \
-    allocating_cost, customer_demand = get_data(70)
+    allocating_cost, customer_demand = get_data(69)
 
     best_assign = init_assignment()
     while not is_assign_valid(best_assign):

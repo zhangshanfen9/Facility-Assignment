@@ -3,10 +3,10 @@
 import math
 import random
 from copy import *
-import functools
-import matplotlib.pyplot as plt
+# import functools
+# import matplotlib.pyplot as plt
 
-STEP_TOTAL = 100000
+STEP_TOTAL = 10000
 MAX_NUM = 100000000
 NEIGHBOR_METHOD = 2
 # 0 -- change two customers selections
@@ -15,6 +15,7 @@ NEIGHBOR_METHOD = 2
 CROSS_METHOD = 0
 # 0 -- exchange one part
 # 1 -- every bits has probability exchange
+# UNIFORM_PRO = 0.4
 MUTATION_METHOD = 0
 # 0 -- mutate a indivadual
 VARI_PRO = 0.4
@@ -182,7 +183,7 @@ def uniform_crosser(w1, w2):
     offspring2 = deepcopy(w2)
     for i in range(len(w1)):
         ran = random.random()
-        if ran < 0.5:
+        if ran < UNIFORM_PRO:
             temp = offspring1[i]
             offspring1[i] = offspring2[i]
             offspring2[i] = temp
@@ -225,10 +226,22 @@ def mutation():
 #         f.write("\n")
 
 
-# def init():
-    # plt.figure(1)
-    # plt.figure(2)
-    # plt.ion()
+def init():
+    global facility_num
+    global customer_num
+    global facility_capacity
+    global facility_cos
+    global allocating_cost
+    global customer_demand
+    global group
+
+    facility_num = 0
+    customer_num = 0
+    facility_capacity = []
+    facility_cost = []
+    allocating_cost = []
+    customer_demand = []
+    group = []
 
     # total_pro = 0
     # if SELECT_METHOD == 0:
@@ -251,56 +264,24 @@ def mutation():
     #         cost_pro.append(total_pro)
 
 
-# def dynamic_show(step, best_his, best_way):
-#     print("step %d: best distance: %f" % (step, best_his))
-
-#     draw_x = []
-#     draw_y = []
-
-#     # 绘图
-#     for i in range(CITY_NUM):
-#         draw_x.append(points_x[best_way[i]])
-#         draw_y.append(points_y[best_way[i]])
-#     draw_x.append(points_x[best_way[0]])
-#     draw_y.append(points_y[best_way[0]])
-
-#     plt.figure(1)
-#     plt.cla()
-#     plt.title("Current best result:")
-#     ax = plt.gca()
-#     # 设置x轴、y轴名称
-#     ax.set_xlabel('x')
-#     ax.set_ylabel('y')
-
-#     # 画连线图，以x_list中的值为横坐标，以y_list中的值为纵坐标
-#     # 参数c指定连线的颜色，linewidth指定连线宽度，alpha指定连线的透明度
-#     ax.plot(draw_x, draw_y, color='r', linewidth=1, alpha=0.6)
-
-#     best_distance_history.append(best_his)
-#     plt.figure(2)
-#     plt.cla()
-#     plt.title("Best distance")
-#     # 画连线图，以x_list中的值为横坐标，以y_list中的值为纵坐标
-#     # 参数c指定连线的颜色，linewidth指定连线宽度，alpha指定连线的透明度
-#     plt.plot(best_distance_history)
-
-#     plt.pause(0.1)
-
 if __name__ == '__main__':
+    # test
     # facility_num = 5
     # LAMADA = 4
     # group = [[1,2,3,4,5], [6,7,8,9,10]]
     # cross_over()
     # print(group)
 
-    get_data(70)
-    init_group()
-    for step in range(STEP_TOTAL):
-        min_cost = select_group()
-        if step % 10 == 0:
-            print("step %d: min cost: %d" % (step, min_cost))
-        # if best_his < the_best_his:
-        #     the_best_way = deepcopy(best_solution)
-        #     the_best_his = best_his
-        cross_over()
-        mutation()
+    for ins in range(69, 71):
+        init()
+        get_data(ins)
+        init_group()
+        for step in range(STEP_TOTAL):
+            min_cost = select_group()
+            if step % 10 == 0:
+                print("running instance: %d, step %d: min cost: %d" % (ins, step, min_cost))
+            # if best_his < the_best_his:
+            #     the_best_way = deepcopy(best_solution)
+            #     the_best_his = best_his
+            cross_over()
+            mutation()
