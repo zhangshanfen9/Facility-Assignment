@@ -3,9 +3,12 @@
 import math
 import random
 from copy import *
+import xlwt
+import time
 # import functools
 # import matplotlib.pyplot as plt
 
+TIME_SAVE_STEP = 1100
 STEP_TOTAL = 10000
 MAX_NUM = 100000000
 NEIGHBOR_METHOD = 2
@@ -15,7 +18,7 @@ NEIGHBOR_METHOD = 2
 CROSS_METHOD = 0
 # 0 -- exchange one part
 # 1 -- every bits has probability exchange
-# UNIFORM_PRO = 0.4
+UNIFORM_PRO = 0.4
 MUTATION_METHOD = 0
 # 0 -- mutate a indivadual
 VARI_PRO = 0.4
@@ -34,6 +37,12 @@ allocating_cost = []
 customer_demand = []
 group = []
 
+best_cost = MAX_NUM
+best_solution = []
+best_step = -1
+
+xls_record = []
+
 def get_data(index):
     global facility_num
     global customer_num
@@ -43,7 +52,7 @@ def get_data(index):
     global customer_demand
     with open('Instances/p' + str(index), 'r')as f:
         lines = f.read()
-    arr = lines.replace('.', ' ').replace('\n', ' ').split()
+    arr = lines.replace('.', ' ').replace(chr(0), '').replace('\n', ' ').split()
     for i in range(len(arr)):
         arr[i] = int(arr[i])
     facility_num, customer_num = arr[0], arr[1]
@@ -138,6 +147,7 @@ def init_group():
 def select_group():
     global group
     min_ind, min_cost, group_cost = get_group_cost()
+    curr_best_solution = group[min_ind]
     # 2 players competition
     temp_group = []
     for _ in range(GROUP_NUM):
@@ -148,7 +158,7 @@ def select_group():
         else:
             temp_group.append(group[b])
     group = temp_group
-    return min_cost
+    return min_cost, curr_best_solution
     
 
 def get_group_cost():
@@ -217,15 +227,6 @@ def mutation():
                     group[i][j] = random.randint(0, facility_num - 1)
 
 
-# def save_result():
-#     plt.ioff()
-#     plt.show()
-
-#     with open("E:\\result2_lin105.txt", "w+") as f:
-#         f.write(str(the_best_way))
-#         f.write("\n")
-
-
 def init():
     global facility_num
     global customer_num
@@ -235,6 +236,10 @@ def init():
     global customer_demand
     global group
 
+    global best_cost
+    global best_solution
+    global best_step
+
     facility_num = 0
     customer_num = 0
     facility_capacity = []
@@ -242,6 +247,10 @@ def init():
     allocating_cost = []
     customer_demand = []
     group = []
+
+    best_cost = MAX_NUM
+    best_solution = []
+    best_step = -1
 
     # total_pro = 0
     # if SELECT_METHOD == 0:
@@ -264,6 +273,38 @@ def init():
     #         cost_pro.append(total_pro)
 
 
+def save_result(ins):
+    res1 = str(best_cost) + '\n'
+    res2 = ''
+    res3 = ''
+    fset = set()
+    for i in range(customer_num):
+        res3 += str(best_solution[i] + 1) + ' '
+        fset.add(best_solution[i])
+    res3 += '\n'
+    for i in range(facility_num):
+        if i in fset:
+            res2 += '1 '
+        else:
+            res2 += '0 '
+    res2 += '\n'
+    with open("Result/genetic_algorithm_details", "a") as f:
+        f.write(res1 + res2 + res3)
+    
+    book = xlwt.Workbook(encoding='utf-8', style_compression=0)
+    sheet = book.add_sheet('sheet1', cell_overwrite_ok=True)
+    sheet.write(0, 1, 'Result')
+    sheet.write(0, 2, 'Time(s)')
+
+    for i in range(len(xls_record)):
+        sheet.write(i + 1, 0, xls_record[i][0])
+        sheet.write(i + 1, 1, xls_record[i][1])
+        sheet.write(i + 1, 2, xls_record[i][2])
+    
+    book.save('Result/genetic_algorithm_xls/genetic_algorithm_result.xls' + str(ins) + '.xls')
+    
+
+
 if __name__ == '__main__':
     # test
     # facility_num = 5
@@ -272,16 +313,24 @@ if __name__ == '__main__':
     # cross_over()
     # print(group)
 
-    for ins in range(69, 71):
+    for ins in range(1, 72):
+        start = time.time()
         init()
         get_data(ins)
         init_group()
         for step in range(STEP_TOTAL):
-            min_cost = select_group()
+            if step - best_step > TIME_SAVE_STEP:
+                break
+            min_cost, curr_best_solution = select_group()
             if step % 10 == 0:
                 print("running instance: %d, step %d: min cost: %d" % (ins, step, min_cost))
-            # if best_his < the_best_his:
-            #     the_best_way = deepcopy(best_solution)
-            #     the_best_his = best_his
+            if min_cost < best_cost:
+                best_solution = deepcopy(curr_best_solution)
+                best_cost = min_cost
+                best_step = step
             cross_over()
             mutation()
+        running_time = time.time() - start
+        xls_record.append(['p' + str(ins), best_cost, running_time])
+        save_result(ins)
+        
