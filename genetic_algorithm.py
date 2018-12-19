@@ -6,259 +6,301 @@ from copy import *
 import functools
 import matplotlib.pyplot as plt
 
-# 参数
-CITY_NUM = 105
-# CITY_NUM = 150
+STEP_TOTAL = 100000
+MAX_NUM = 100000000
+NEIGHBOR_METHOD = 2
+# 0 -- change two customers selections
+# 1 -- generate a new assignment
+# 2 -- random change a customer's selection
+CROSS_METHOD = 0
+# 0 -- exchange one part
+# 1 -- every bits has probability exchange
+MUTATION_METHOD = 0
+# 0 -- mutate a indivadual
+VARI_PRO = 0.4
+# 1 -- mutate a bit gene
+# VARI_PRO = 0.006
+INITIAL_GROUP_NUM = 200
+GROUP_NUM = 200
+LAMADA = 220
 
-# 0 -- random change two city
-# 1 -- random change k city, k is depended on step
-# 2 -- two-opt change
-NEIGHBORHOOD_METHOD = 2
-CROSS_PRO = 0.6
-# VARI_PRO = 0.4
-VARI_PRO = 0.3
-GROUP_SIZE = 300
-STEP_TOTAL = 5000
-SELECT_METHOD = 1
 
-NON_LINEAR_MAX_PRO = 0.02
-
-# 0 -- linear grade-based
-# 1 -- non-linear grade-based
-# 2 -- fitness-based
-SELECT_METHOD = 1
-
+facility_num = 0
+customer_num = 0
+facility_capacity = []
+facility_cost = []
+allocating_cost = []
+customer_demand = []
 group = []
 
-points_x = []
-points_y = []
-
-cost_pro = [0]
-best_distance_history = []
-the_best_way = []
-the_best_his = 1000000000
-dis_matrix = [[0] * CITY_NUM for i in range(CITY_NUM)]
-
-
-def euc2d_distance(x1, x2, y1, y2):
-    return math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
-
-
-def make_distance_matrix():
-    with open("lin105.tsp", "r") as f:
-    # with open("ch150.tsp", "r") as f:
-        s = f.read()
-    arr = s.split()
-    arr = arr[:-1]
-    for i in range(CITY_NUM):
-        points_x.append(float(arr[i * 3 + 1]))
-        points_y.append(float(arr[i * 3 + 2]))
-    for i in range(CITY_NUM):
-        for j in range(CITY_NUM):
-            dis_matrix[i][j] = euc2d_distance(points_x[i], points_x[j], points_y[i], points_y[j])
-
-
-def init_way():
-    way = []
-    for i in range(CITY_NUM):
-        way.append(i)
-    random.shuffle(way)
-    return way
+def get_data(index):
+    global facility_num
+    global customer_num
+    global facility_capacity
+    global facility_cost
+    global allocating_cost
+    global customer_demand
+    with open('Instances/p' + str(index), 'r')as f:
+        lines = f.read()
+    arr = lines.replace('.', ' ').replace('\n', ' ').split()
+    for i in range(len(arr)):
+        arr[i] = int(arr[i])
+    facility_num, customer_num = arr[0], arr[1]
+    facility_capacity, facility_cost = [], []
+    ind = 2
+    for i in range(facility_num):
+        facility_capacity.append(arr[ind])
+        facility_cost.append(arr[ind + 1])
+        ind += 2
+    customer_demand = []
+    for i in range(customer_num):
+        customer_demand.append(arr[ind])
+        ind += 1
+    # ac[f, c]
+    allocating_cost = []
+    for i in range(facility_num):
+        temp = []
+        for j in range(customer_num):
+            temp.append(arr[ind])
+            ind += 1
+        allocating_cost.append(temp)
 
 
-def get_neighbor(way, now_n, total_n):
-    if NEIGHBORHOOD_METHOD == 0 or NEIGHBORHOOD_METHOD == 1:
-        trans_num = 1
-        if NEIGHBORHOOD_METHOD == 1:
-            trans_num = int(0.2 * CITY_NUM * (1 - math.sqrt(now_n / total_n)))
-            # print(trans_num)
-            if trans_num < 1:
-                trans_num = 1
-        for k in range(trans_num):
-            rana = random.randint(0, CITY_NUM - 1)
-            ranb = random.randint(0, CITY_NUM - 1)
-            way[rana], way[ranb] = way[ranb], way[rana]
-    elif NEIGHBORHOOD_METHOD == 2:
-        rana = random.randint(0, CITY_NUM - 1)
-        ranb = random.randint(0, CITY_NUM - 1)
-        while ranb < rana:
-            rana = random.randint(0, CITY_NUM - 1)
-            ranb = random.randint(0, CITY_NUM - 1)
-        temp = way[rana : ranb + 1][:]
-        temp.reverse()
-        count = 0
-        for i in range(rana, ranb + 1):
-            way[i] = temp[count]
-            count += 1
+def init_assignment():
+    global customer_num
+    global facility_num
+    assign = []
+    for i in range(customer_num):
+        assign.append(random.randint(0, facility_num - 1))
+    return assign
+
+def get_cost(assign):
+    if not is_assign_valid(assign):
+        return MAX_NUM
+    cost = 0
+    fset = set()
+    for i in range(customer_num):
+        fset.add(assign[i])
+        cost += allocating_cost[assign[i]][i]
+    for i in range(facility_num):
+        if i in fset:
+            cost += facility_cost[i]
+    return cost
 
 
-def get_cost(way):
-    res = 0
-    for i in range(len(way) - 1):
-        res += dis_matrix[way[i]][way[i + 1]]
-    res += dis_matrix[way[len(way) - 1]][way[0]]
-    return res
+def is_assign_valid(assign):
+    real_facility_capacity = [0] * facility_num
+    for i in range(customer_num):
+        real_facility_capacity[assign[i]] += customer_demand[i]
+    for i in range(facility_num):
+        if real_facility_capacity[i] > facility_capacity[i]:
+            return False
+    return True
 
+def get_neighbor(assign):
+    if NEIGHBOR_METHOD == 0:
+        res = deepcopy(assign)
+        rana = random.randint(0, customer_num - 1)
+        ranb = random.randint(0, customer_num - 1)
+        temp = res[rana]
+        res[rana] = res[ranb]
+        res[ranb] = temp
+        return res
+    elif NEIGHBOR_METHOD == 1:
+        res = init_assignment()
+        while not is_assign_valid(res):
+            res = init_assignment()
+        return res
+    elif NEIGHBOR_METHOD == 2:
+        res = deepcopy(assign)
+        rana = random.randint(0, customer_num - 1)
+        res[rana] = random.randint(0, facility_num - 1)
+        return res
 
 def init_group():
     global group
-    for _ in range(GROUP_SIZE):
-        group.append(init_way())
+    for _ in range(INITIAL_GROUP_NUM):
+        group.append(init_assignment())
 
 
-def sort_function(x, y):
-    cx = get_cost(x)
-    cy = get_cost(y)
-    if cx < cy:
-        return -1
-    elif cx == cy:
-        return 0
-    else:
-        return 1
+# def sort_function(x, y):
+#     cx = get_cost(x)
+#     cy = get_cost(y)
+#     if cx < cy:
+#         return -1
+#     elif cx == cy:
+#         return 0
+#     else:
+#         return 1
+
 
 def select_group():
     global group
-    global cost_pro
-    group = sorted(group, key = functools.cmp_to_key(sort_function))
-    res = get_cost(group[0])
+    min_ind, min_cost, group_cost = get_group_cost()
+    # 2 players competition
     temp_group = []
-    for _ in range(GROUP_SIZE):
-        random_num = random.random()
-        for i in range(GROUP_SIZE):
-            if random_num >= cost_pro[i] and random_num < cost_pro[i+1]:
-                temp_group.append(group[i])
-                break
+    for _ in range(GROUP_NUM):
+        a = random.randint(0, len(group) - 1)
+        b = random.randint(0, len(group) - 1)
+        if group_cost[a] < group_cost[b]:
+            temp_group.append(group[a])
+        else:
+            temp_group.append(group[b])
+    group = temp_group
+    return min_cost
+    
 
-    # print(len(temp_group))
-    group = deepcopy(temp_group)
-    group = sorted(group, key = functools.cmp_to_key(sort_function))
-    return res, group[0]
-
+def get_group_cost():
+    min_ind = 0
+    min_cost = MAX_NUM
+    group_cost = []
+    for i in range(len(group)):
+        tcost = get_cost(group[i])
+        group_cost.append(tcost)
+        if min_cost > tcost:
+            min_cost = tcost
+            min_ind = i
+    return min_ind, min_cost, group_cost
 
 def cross_over():
     global group
-    # print(group)
-    for i in range(int(GROUP_SIZE / 5)):
-        a = random.randint(0, GROUP_SIZE - 1)
-        b = random.randint(0, GROUP_SIZE - 1)
-        if random.random() < CROSS_PRO:
-            ng1 = OX_crosser(group[a], group[b])
-            ng2 = OX_crosser(group[b], group[a])
-            group.append(ng1)
-            group.append(ng2)
+    temp_group = []
+    for i in range(int(LAMADA / 2)):
+        a = random.randint(0, len(group) - 1)
+        b = random.randint(0, len(group) - 1)
+        c1, c2 = [], []
+        if CROSS_METHOD == 0:
+            c1, c2 = OX_crosser(group[a], group[b])
+        elif CROSS_METHOD == 1:
+            c1, c2 = uniform_crosser(group[a], group[b])
+        temp_group.append(c1[:])
+        temp_group.append(c2[:])
+    group += temp_group[:]
 
+def uniform_crosser(w1, w2):
+    offspring1 = deepcopy(w1)
+    offspring2 = deepcopy(w2)
+    for i in range(len(w1)):
+        ran = random.random()
+        if ran < 0.5:
+            temp = offspring1[i]
+            offspring1[i] = offspring2[i]
+            offspring2[i] = temp
+    return offspring1, offspring2
 
 def OX_crosser(w1, w2):
-    ran1 = random.randint(0, CITY_NUM - 1)
-    ran2 = random.randint(0, CITY_NUM - 1)
+    ran1 = random.randint(0, facility_num - 1)
+    ran2 = random.randint(0, facility_num - 1)
     if ran2 < ran1:
         ran1, ran2 = ran2, ran1
-    offspring = []
-    w1_part = w1[ran1:ran2 + 1]
-    w1_part_set = set()
-    for wpi in w1_part:
-        w1_part_set.add(wpi)
-    for i in range(CITY_NUM):
-        if len(offspring) == ran1:
-            for j in range(len(w1_part)):
-                offspring.append(w1_part[j])
-        if not w2[i] in w1_part_set:
-            offspring.append(w2[i])
-    if len(offspring) < CITY_NUM:
-        for j in range(len(w1_part)):
-            offspring.append(w1_part[j])
-    return offspring
+    offspring1 = deepcopy(w1)
+    offspring2 = deepcopy(w2)
+    for i in range(ran1, ran2 + 1):
+        temp = offspring1[i]
+        offspring1[i] = offspring2[i]
+        offspring2[i] = temp
+    # print(offspring1, offspring2)
+    return offspring1, offspring2
 
 
-def mutation(step, total_step):
-    for i in range(GROUP_SIZE):
-        if random.random() < VARI_PRO:
-            get_neighbor(group[i], step, total_step)
+def mutation():
+    global group
+    if MUTATION_METHOD == 0:
+        for i in range(len(group)):
+            if random.random() < VARI_PRO:
+                group[i] = get_neighbor(group[i])
+    elif MUTATION_METHOD == 1:
+        for i in range(len(group)):
+            for j in range(customer_num):
+                if random.random() < VARI_PRO:
+                    group[i][j] = random.randint(0, facility_num - 1)
 
 
-def save_result():
-    plt.ioff()
-    plt.show()
+# def save_result():
+#     plt.ioff()
+#     plt.show()
 
-    with open("E:\\result2_lin105.txt", "w+") as f:
-        f.write(str(the_best_way))
-        f.write("\n")
-
-
-def init():
-    plt.figure(1)
-    plt.figure(2)
-    plt.ion()
-
-    total_pro = 0
-    if SELECT_METHOD == 0:
-        a = 1.8
-        b = 2 * (a - 1)
-        # linear function
-        for i in range(1, GROUP_SIZE + 1):
-            pro = (a - b * float(i) / (GROUP_SIZE + 1)) / GROUP_SIZE
-            total_pro += pro
-            cost_pro.append(total_pro)
-    elif SELECT_METHOD == 1:
-        # non-linear function
-        q = NON_LINEAR_MAX_PRO
-        for i in range(1, GROUP_SIZE + 1):
-            if i != GROUP_SIZE:
-                pro = q * pow(1 - q, i - 1)
-            else:
-                pro = pow(1 - q, i - 1)
-            total_pro += pro
-            cost_pro.append(total_pro)
+#     with open("E:\\result2_lin105.txt", "w+") as f:
+#         f.write(str(the_best_way))
+#         f.write("\n")
 
 
-def dynamic_show(step, best_his, best_way):
-    print("step %d: best distance: %f" % (step, best_his))
+# def init():
+    # plt.figure(1)
+    # plt.figure(2)
+    # plt.ion()
 
-    draw_x = []
-    draw_y = []
+    # total_pro = 0
+    # if SELECT_METHOD == 0:
+    #     a = 1.8
+    #     b = 2 * (a - 1)
+    #     # linear function
+    #     for i in range(1, GROUP_NUM + 1):
+    #         pro = (a - b * float(i) / (GROUP_NUM + 1)) / GROUP_NUM
+    #         total_pro += pro
+    #         cost_pro.append(total_pro)
+    # elif SELECT_METHOD == 1:
+    #     # non-linear function
+    #     q = NON_LINEAR_MAX_PRO
+    #     for i in range(1, GROUP_NUM + 1):
+    #         if i != GROUP_NUM:
+    #             pro = q * pow(1 - q, i - 1)
+    #         else:
+    #             pro = pow(1 - q, i - 1)
+    #         total_pro += pro
+    #         cost_pro.append(total_pro)
 
-    # 绘图
-    for i in range(CITY_NUM):
-        draw_x.append(points_x[best_way[i]])
-        draw_y.append(points_y[best_way[i]])
-    draw_x.append(points_x[best_way[0]])
-    draw_y.append(points_y[best_way[0]])
 
-    plt.figure(1)
-    plt.cla()
-    plt.title("Current best result:")
-    ax = plt.gca()
-    # 设置x轴、y轴名称
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
+# def dynamic_show(step, best_his, best_way):
+#     print("step %d: best distance: %f" % (step, best_his))
 
-    # 画连线图，以x_list中的值为横坐标，以y_list中的值为纵坐标
-    # 参数c指定连线的颜色，linewidth指定连线宽度，alpha指定连线的透明度
-    ax.plot(draw_x, draw_y, color='r', linewidth=1, alpha=0.6)
+#     draw_x = []
+#     draw_y = []
 
-    best_distance_history.append(best_his)
-    plt.figure(2)
-    plt.cla()
-    plt.title("Best distance")
-    # 画连线图，以x_list中的值为横坐标，以y_list中的值为纵坐标
-    # 参数c指定连线的颜色，linewidth指定连线宽度，alpha指定连线的透明度
-    plt.plot(best_distance_history)
+#     # 绘图
+#     for i in range(CITY_NUM):
+#         draw_x.append(points_x[best_way[i]])
+#         draw_y.append(points_y[best_way[i]])
+#     draw_x.append(points_x[best_way[0]])
+#     draw_y.append(points_y[best_way[0]])
 
-    plt.pause(0.1)
+#     plt.figure(1)
+#     plt.cla()
+#     plt.title("Current best result:")
+#     ax = plt.gca()
+#     # 设置x轴、y轴名称
+#     ax.set_xlabel('x')
+#     ax.set_ylabel('y')
+
+#     # 画连线图，以x_list中的值为横坐标，以y_list中的值为纵坐标
+#     # 参数c指定连线的颜色，linewidth指定连线宽度，alpha指定连线的透明度
+#     ax.plot(draw_x, draw_y, color='r', linewidth=1, alpha=0.6)
+
+#     best_distance_history.append(best_his)
+#     plt.figure(2)
+#     plt.cla()
+#     plt.title("Best distance")
+#     # 画连线图，以x_list中的值为横坐标，以y_list中的值为纵坐标
+#     # 参数c指定连线的颜色，linewidth指定连线宽度，alpha指定连线的透明度
+#     plt.plot(best_distance_history)
+
+#     plt.pause(0.1)
 
 if __name__ == '__main__':
-    init()
-    make_distance_matrix()
+    # facility_num = 5
+    # LAMADA = 4
+    # group = [[1,2,3,4,5], [6,7,8,9,10]]
+    # cross_over()
+    # print(group)
+
+    get_data(70)
     init_group()
-    step = 0
-    while step < STEP_TOTAL:
-        step += 1
-        best_his, best_solution = select_group()
-        if best_his < the_best_his:
-            the_best_way = deepcopy(best_solution)
-            the_best_his = best_his
+    for step in range(STEP_TOTAL):
+        min_cost = select_group()
         if step % 10 == 0:
-            dynamic_show(step, best_his, the_best_way)
+            print("step %d: min cost: %d" % (step, min_cost))
+        # if best_his < the_best_his:
+        #     the_best_way = deepcopy(best_solution)
+        #     the_best_his = best_his
         cross_over()
-        mutation(step, STEP_TOTAL)
-    save_result()
+        mutation()

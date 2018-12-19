@@ -3,11 +3,12 @@
 import random
 from copy import deepcopy
 
-STEP_TOTAL = 100000
+STEP_TOTAL = 200000
 MAX_NUM = 100000000
-NEIGHBOR_METHOD = 0
+NEIGHBOR_METHOD = 2
 # 0 -- change two customers selections
 # 1 -- generate a new assignment
+# 2 -- random change a customer's selection
 facility_num = 0
 customer_num = 0
 facility_capacity = []
@@ -88,11 +89,16 @@ def get_neighbor(assign, method):
         while not is_assign_valid(res):
             res = init_assignment()
         return res
+    elif NEIGHBOR_METHOD == 2:
+        res = deepcopy(assign)
+        rana = random.randint(0, customer_num - 1)
+        res[rana] = random.randint(0, facility_num - 1)
+        return res
 
 if __name__ == '__main__':
     facility_num, customer_num, \
     facility_capacity, facility_cost, \
-    allocating_cost, customer_demand = get_data(1)
+    allocating_cost, customer_demand = get_data(70)
 
     best_assign = init_assignment()
     while not is_assign_valid(best_assign):
