@@ -2,7 +2,10 @@
 # -*- coding: UTF-8 -*-
 import random
 from copy import deepcopy
+import xlwt
+import time
 
+TIME_SAVE_STEP = 30000
 STEP_TOTAL = 200000
 MAX_NUM = 100000000
 NEIGHBOR_METHOD = 2
@@ -16,10 +19,22 @@ facility_cost = []
 allocating_cost = []
 customer_demand = []
 
+best_cost = MAX_NUM
+best_solution = []
+best_step = -1
+
+xls_record = []
+
 def get_data(index):
+    global facility_num
+    global customer_num
+    global facility_capacity
+    global facility_cost
+    global allocating_cost
+    global customer_demand
     with open('Instances/p' + str(index), 'r')as f:
         lines = f.read()
-    arr = lines.replace('.', ' ').replace('\n', ' ').split()
+    arr = lines.replace('.', ' ').replace(chr(0), '').replace('\n', ' ').split()
     for i in range(len(arr)):
         arr[i] = int(arr[i])
     facility_num, customer_num = arr[0], arr[1]
@@ -41,7 +56,6 @@ def get_data(index):
             temp.append(arr[ind])
             ind += 1
         allocating_cost.append(temp)
-    return facility_num, customer_num, facility_capacity, facility_cost, allocating_cost, customer_demand  
 
 
 def init_assignment():
@@ -95,22 +109,92 @@ def get_neighbor(assign, method):
         res[rana] = random.randint(0, facility_num - 1)
         return res
 
-if __name__ == '__main__':
-    facility_num, customer_num, \
-    facility_capacity, facility_cost, \
-    allocating_cost, customer_demand = get_data(69)
+def init():
+    global facility_num
+    global customer_num
+    global facility_capacity
+    global facility_cost
+    global allocating_cost
+    global customer_demand
 
-    best_assign = init_assignment()
-    while not is_assign_valid(best_assign):
-        best_assign = init_assignment()
-    best_cost = get_cost(best_assign)
-    for step in range(STEP_TOTAL):
-        if step % 10 == 0:
-            print("step: %d, best cost:%d"%(step, best_cost))
-        temp_assign = get_neighbor(best_assign, NEIGHBOR_METHOD)
-        while not is_assign_valid(temp_assign):
-            temp_assign = get_neighbor(best_assign, NEIGHBOR_METHOD)
-        temp_cost = get_cost(temp_assign)
-        if temp_cost < best_cost:
-            best_cost = temp_cost
-            best_assign = temp_assign
+    global best_cost
+    global best_solution
+    global best_step
+
+    facility_num = 0
+    customer_num = 0
+    facility_capacity = []
+    facility_cost = []
+    allocating_cost = []
+    customer_demand = []
+
+    best_cost = MAX_NUM
+    best_solution = []
+    best_step = -1
+
+
+def save_result(ins):
+    res1 = str(best_cost) + '\n'
+    res2 = ''
+    res3 = ''
+    fset = set()
+    for i in range(customer_num):
+        res3 += str(best_solution[i] + 1) + ' '
+        fset.add(best_solution[i])
+    res3 += '\n'
+    for i in range(facility_num):
+        if i in fset:
+            res2 += '1 '
+        else:
+            res2 += '0 '
+    res2 += '\n'
+    with open("Result/greedy_algorithm_details", "a") as f:
+        f.write(res1 + res2 + res3)
+    
+    book = xlwt.Workbook(encoding='utf-8', style_compression=0)
+    sheet = book.add_sheet('sheet1', cell_overwrite_ok=True)
+    sheet.write(0, 1, 'Result')
+    sheet.write(0, 2, 'Time(s)')
+
+    for i in range(len(xls_record)):
+        sheet.write(i + 1, 0, xls_record[i][0])
+        sheet.write(i + 1, 1, xls_record[i][1])
+        sheet.write(i + 1, 2, xls_record[i][2])
+    
+    book.save('Result/greedy_algorithm_xls/greedy_algorithm_result.xls' + str(ins) + '.xls')
+    
+
+def check():
+    assert len(facility_capacity) == facility_num
+    assert len(facility_cost) == facility_num
+    assert len(customer_demand) == customer_num
+    assert len(allocating_cost) == facility_num
+    assert len(allocating_cost[0]) == customer_num
+
+
+if __name__ == '__main__':
+    for ins in range(1, 72):
+        start = time.time()
+        init()
+        get_data(ins)
+        check()
+        best_solution = init_assignment()
+        while not is_assign_valid(best_solution):
+            best_solution = init_assignment()
+        best_cost = get_cost(best_solution)
+        for step in range(STEP_TOTAL):
+            if step - best_step > TIME_SAVE_STEP:
+                break
+            if step % 10 == 0:
+                print("running instance: %d, step: %d, min cost:%d"%(ins, step, best_cost))
+            temp_assign = get_neighbor(best_solution, NEIGHBOR_METHOD)
+            while not is_assign_valid(temp_assign):
+                temp_assign = get_neighbor(best_solution, NEIGHBOR_METHOD)
+            temp_cost = get_cost(temp_assign)
+            if temp_cost < best_cost:
+                best_cost = temp_cost
+                best_solution = temp_assign
+                best_step = step
+        running_time = time.time() - start
+        xls_record.append(['p' + str(ins), best_cost, running_time])
+        save_result(ins)

@@ -8,7 +8,7 @@ import time
 # import functools
 # import matplotlib.pyplot as plt
 
-TIME_SAVE_STEP = 1100
+TIME_SAVE_STEP = 1800
 STEP_TOTAL = 10000
 MAX_NUM = 100000000
 NEIGHBOR_METHOD = 2
@@ -40,6 +40,8 @@ group = []
 best_cost = MAX_NUM
 best_solution = []
 best_step = -1
+same_cost = MAX_NUM
+same_step = -1
 
 xls_record = []
 
@@ -231,7 +233,7 @@ def init():
     global facility_num
     global customer_num
     global facility_capacity
-    global facility_cos
+    global facility_cost
     global allocating_cost
     global customer_demand
     global group
@@ -240,6 +242,11 @@ def init():
     global best_solution
     global best_step
 
+    global same_cost
+    global same_step
+
+    same_cost = MAX_NUM
+    same_step = -1
     facility_num = 0
     customer_num = 0
     facility_capacity = []
@@ -272,6 +279,13 @@ def init():
     #         total_pro += pro
     #         cost_pro.append(total_pro)
 
+
+def check():
+    assert len(facility_capacity) == facility_num
+    assert len(facility_cost) == facility_num
+    assert len(customer_demand) == customer_num
+    assert len(allocating_cost) == facility_num
+    assert len(allocating_cost[0]) == customer_num
 
 def save_result(ins):
     res1 = str(best_cost) + '\n'
@@ -317,9 +331,10 @@ if __name__ == '__main__':
         start = time.time()
         init()
         get_data(ins)
+        check()
         init_group()
         for step in range(STEP_TOTAL):
-            if step - best_step > TIME_SAVE_STEP:
+            if step - same_step > TIME_SAVE_STEP:
                 break
             min_cost, curr_best_solution = select_group()
             if step % 10 == 0:
@@ -327,7 +342,9 @@ if __name__ == '__main__':
             if min_cost < best_cost:
                 best_solution = deepcopy(curr_best_solution)
                 best_cost = min_cost
-                best_step = step
+            if min_cost != same_cost:
+                same_step = step
+                same_cost = min_cost
             cross_over()
             mutation()
         running_time = time.time() - start
