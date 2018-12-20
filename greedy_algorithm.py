@@ -8,10 +8,10 @@ import time
 TIME_SAVE_STEP = 30000
 STEP_TOTAL = 200000
 MAX_NUM = 100000000
-NEIGHBOR_METHOD = 2
-# 0 -- change two customers selections
-# 1 -- generate a new assignment
-# 2 -- random change a customer's selection
+NEIGHBOR_METHOD = 1
+# 0 -- change two customers selections(neighbor)
+# 1 -- generate a new assignment(greedy)
+# 2 -- random change a customer's selection(neighbor)
 facility_num = 0
 customer_num = 0
 facility_capacity = []
@@ -185,7 +185,7 @@ if __name__ == '__main__':
         for step in range(STEP_TOTAL):
             if step - best_step > TIME_SAVE_STEP:
                 break
-            if step % 10 == 0:
+            if step % 2000 == 0:
                 print("running instance: %d, step: %d, min cost:%d"%(ins, step, best_cost))
             temp_assign = get_neighbor(best_solution, NEIGHBOR_METHOD)
             while not is_assign_valid(temp_assign):

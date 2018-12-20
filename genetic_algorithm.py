@@ -9,7 +9,7 @@ import time
 # import matplotlib.pyplot as plt
 
 TIME_SAVE_STEP = 1800
-STEP_TOTAL = 10000
+STEP_TOTAL = 20000
 MAX_NUM = 100000000
 NEIGHBOR_METHOD = 2
 # 0 -- change two customers selections
@@ -161,6 +161,17 @@ def select_group():
             temp_group.append(group[b])
     group = temp_group
     return min_cost, curr_best_solution
+
+    # temp_group = []
+    # for _ in range(GROUP_SIZE):
+    #     random_num = random.random()
+    #     for i in range(GROUP_SIZE):
+    #         if random_num >= cost_pro[i] and random_num < cost_pro[i+1]:
+    #             temp_group.append(group[i])
+    #             break
+    # # print(len(temp_group))
+    # group = deepcopy(temp_group)
+    # return res
     
 
 def get_group_cost():
@@ -337,7 +348,7 @@ if __name__ == '__main__':
             if step - same_step > TIME_SAVE_STEP:
                 break
             min_cost, curr_best_solution = select_group()
-            if step % 10 == 0:
+            if step % 100 == 0:
                 print("running instance: %d, step %d: min cost: %d" % (ins, step, min_cost))
             if min_cost < best_cost:
                 best_solution = deepcopy(curr_best_solution)
