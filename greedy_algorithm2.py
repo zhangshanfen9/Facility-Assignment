@@ -5,11 +5,11 @@ from copy import deepcopy
 import xlwt
 import time
 
-# TIME_SAVE_STEP = 30000
-TIME_SAVE_STEP = 5000
+TIME_SAVE_STEP = 30000
+# TIME_SAVE_STEP = 5000
 STEP_TOTAL = 200000
 MAX_NUM = 100000000
-NEIGHBOR_METHOD = 1
+NEIGHBOR_METHOD = 0
 # 0 -- change two customers selections(neighbor)
 # 1 -- generate a new assignment(greedy)
 # 2 -- random change a customer's selection(neighbor)
@@ -162,7 +162,7 @@ def save_result(ins):
         sheet.write(i + 1, 1, xls_record[i][1])
         sheet.write(i + 1, 2, xls_record[i][2])
     
-    book.save('Result/greedy_algorithm_xls/greedy_algorithm_result.xls' + str(ins) + '.xls')
+    book.save('Result/greedy_algorithm2_xls/greedy_algorithm_result.xls' + str(ins) + '.xls')
     
 
 def check():
